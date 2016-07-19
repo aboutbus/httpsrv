@@ -27,6 +27,11 @@ void http_client(int nd)
 	int ret = sscanf(buf, "GET %s", file + strlen(file));
 	assert(ret == 1);
 
+	char *ptr = strchr(file, '?');
+	if (ptr != '\0') {
+		*ptr = '\0';
+	}
+
 	printf("file: %s\n\n", file);
 
 	FILE *fd = fopen(file, "r");
