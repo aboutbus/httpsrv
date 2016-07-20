@@ -69,8 +69,6 @@ void http_client(int nd)
 
 	size = send(nd, buf, strlen(buf), MSG_NOSIGNAL);
 	assert(size == strlen(buf));
-
-	pause();
 }
 
 void *thread_fn(void *data)
@@ -121,7 +119,8 @@ int main(int argc, char **argv)
 	dup(fd);
 
 	pthread_t id[THREADS_COUNT];
-	for (int i = 0; i < THREADS_COUNT; ++i) {
+	int i;
+	for (i = 0; i < THREADS_COUNT; ++i) {
 		pthread_create(&id[i], NULL, thread_fn, NULL);
 	}	
 
