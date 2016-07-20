@@ -77,12 +77,39 @@ void *thread_fn(void *data)
 	int sd;
 
 	while (1) {
-		ret = mq_receive(mqueue, (char *)&sd, sizeof(sd), NULL);
+		ret = mq_receive(mqueue, (char *)&sd, sizeof(sd), NULL);		
 		if (ret == sizeof(sd)) {
 			http_client(sd);
 			close(sd);
 		}	
 	}
+}
+
+void server_fn()
+{
+	printf("host: %s port: %d directory: %s\n", host, port, directory);
+
+	int sd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	assert(sd != -1);
+
+	int optval = 1;
+	assert(setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, (void *) &optval, (socklen_t) sizeof(optval)) != -1);
+
+	struct sockaddr_in sa;
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(port);
+	inet_aton(host, &sa.sin_addr);
+	
+	assert(bind(sd, (struct sockaddr *)&sa, sizeof(sa)) != -1);	
+	assert(listen(sd, SOMAXCONN) != -1);
+
+	while(1) {		
+		int nd = accept(sd, NULL, 0);
+		assert(nd != -1);
+		assert(mq_send(mqueue, (const char *)&nd, sizeof(nd), 1) == 0);
+	}
+
+	close(sd);
 }
 
 int main(int argc, char **argv)
@@ -118,12 +145,6 @@ int main(int argc, char **argv)
 	dup(fd);
 	dup(fd);
 
-	pthread_t id[THREADS_COUNT];
-	int i;
-	for (i = 0; i < THREADS_COUNT; ++i) {
-		pthread_create(&id[i], NULL, thread_fn, NULL);
-	}	
-
 	struct mq_attr ma;
 	ma.mq_flags = 0;                // blocking read/write
 	ma.mq_maxmsg = 10;             	// maximum number of messages allowed in queue
@@ -134,30 +155,17 @@ int main(int argc, char **argv)
 	mqueue = mq_open(mqueue_name, O_RDWR | O_CREAT, 0660, &ma);
 	assert(mqueue != -1);
 
-	printf("host: %s port: %d directory: %s\n", host, port, directory);
-
-	int sd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	assert(sd != -1);
-
-	int optval = 1;
-	assert(setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, (void *) &optval, (socklen_t) sizeof(optval)) != -1);
-
-	struct sockaddr_in sa;
-	sa.sin_family = AF_INET;
-	sa.sin_port = htons(port);
-	inet_aton(host, &sa.sin_addr);
-	
-	assert(bind(sd, (struct sockaddr *)&sa, sizeof(sa)) != -1);	
-	assert(listen(sd, SOMAXCONN) != -1);
-
-	while(1) {		
-		int nd = accept(sd, NULL, 0);
-		assert(nd != -1);
-		assert(mq_send(mqueue, (const char *)&nd, sizeof(nd), 1) == 0);
+	pthread_t id[THREADS_COUNT];
+	int i;
+	for (i = 0; i < THREADS_COUNT; ++i) {
+		pthread_create(&id[i], NULL, thread_fn, NULL);
 	}
 
-	close(sd);
-	close(fd);	
+	server_fn();
+
+	mq_close(mqueue);
+
+	close(fd);
 
 	return 0;
 }
