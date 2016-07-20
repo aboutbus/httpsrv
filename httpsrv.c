@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -78,7 +79,9 @@ int main(int argc, char **argv)
 
 	daemon(1, 1);
 
-	int fd = open("./access.log", O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	char file[128];
+	snprintf(file, sizeof(file), "%s.access.log", argv[0]);
+	int fd = open(file, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	assert(fd >= 0);
 
 	close(fileno(stdin));
