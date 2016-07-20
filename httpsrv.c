@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +22,11 @@ void http_client(int nd)
 	char buf[1024];
 
 	int size = recv(nd, buf, sizeof(buf), MSG_NOSIGNAL);
-	assert(size >= 0);
+	if (size <= 0) {
+		printf("recv: %d : %s\n", size, strerror(errno));
+		return;
+	}
+	
 	buf[size] = '\0';
 
 	printf("recv: %d\n%s\n", size, buf);
