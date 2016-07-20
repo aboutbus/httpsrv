@@ -4,8 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <mqueue.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -13,9 +15,14 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 
+#define THREADS_COUNT	10
+
 char *host = "127.0.0.1";
 char *directory = "./";
 int port = 12345;
+
+char *mqueue_name = "/mqueue.mq";
+mqd_t mqueue;
 
 void http_client(int nd)
 {
@@ -62,6 +69,22 @@ void http_client(int nd)
 
 	size = send(nd, buf, strlen(buf), MSG_NOSIGNAL);
 	assert(size == strlen(buf));
+
+	pause();
+}
+
+void *thread_fn(void *data)
+{
+	int ret;
+	int sd;
+
+	while (1) {
+		ret = mq_receive(mqueue, (char *)&sd, sizeof(sd), NULL);
+		if (ret == sizeof(sd)) {
+			http_client(sd);
+			close(sd);
+		}	
+	}
 }
 
 int main(int argc, char **argv)
@@ -97,6 +120,21 @@ int main(int argc, char **argv)
 	dup(fd);
 	dup(fd);
 
+	pthread_t id[THREADS_COUNT];
+	for (int i = 0; i < THREADS_COUNT; ++i) {
+		pthread_create(&id[i], NULL, thread_fn, NULL);
+	}	
+
+	struct mq_attr ma;
+	ma.mq_flags = 0;                // blocking read/write
+	ma.mq_maxmsg = 10;             	// maximum number of messages allowed in queue
+	ma.mq_msgsize = sizeof(int);    		
+	ma.mq_curmsgs = 0;              // number of messages currently in queue
+
+	mq_unlink(mqueue_name);
+	mqueue = mq_open(mqueue_name, O_RDWR | O_CREAT, 0660, &ma);
+	assert(mqueue != -1);
+
 	printf("host: %s port: %d directory: %s\n", host, port, directory);
 
 	int sd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -111,25 +149,16 @@ int main(int argc, char **argv)
 	inet_aton(host, &sa.sin_addr);
 	
 	assert(bind(sd, (struct sockaddr *)&sa, sizeof(sa)) != -1);	
-	assert(listen(sd, SOMAXCONN) != -1);	
+	assert(listen(sd, SOMAXCONN) != -1);
 
 	while(1) {		
 		int nd = accept(sd, NULL, 0);
 		assert(nd != -1);
-
-		int ret = fork();
-		assert(ret >= 0);
-		if (ret == 0) {
-			http_client(nd);
-			close(nd);			
-			return 0;
-		}
-
-		close(nd);
+		assert(mq_send(mqueue, (const char *)&nd, sizeof(nd), 1) == 0);
 	}
 
 	close(sd);
-	close(fd);
+	close(fd);	
 
 	return 0;
 }
