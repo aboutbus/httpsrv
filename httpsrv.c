@@ -14,7 +14,7 @@
 
 char *host = "127.0.0.1";
 char *directory = "./";
-int port = 1080;
+int port = 12345;
 
 void http_client(int nd)
 {
@@ -48,9 +48,10 @@ void http_client(int nd)
 		assert(size >= 0);
 		fb[size] = '\0';
 
+		fclose(fd);
+
 		snprintf(buf, sizeof(buf), "HTTP/1.0 200 OK\r\nContent-Length: %d\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n%s", strlen(fb), fb);
 	}
-	fclose(fd);
 
 	printf("send: %d\n%s\n", strlen(buf), buf);
 
