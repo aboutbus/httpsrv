@@ -49,6 +49,7 @@ void http_client(int nd)
 
 		snprintf(buf, sizeof(buf), "HTTP/1.0 200 OK\r\nContent-Length: %d\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n%s", strlen(fb), fb);
 	}
+	fclose(fd);
 
 	printf("send: %d\n%s\n", strlen(buf), buf);
 
@@ -72,6 +73,8 @@ int main(int argc, char **argv)
 				break;
 		}
 	}
+
+	signal(SIGCHLD, SIG_IGN);
 
 	daemon(1, 1);
 
@@ -114,6 +117,7 @@ int main(int argc, char **argv)
 	}
 
 	close(sd);
+	close(fd);
 
 	return 0;
 }
