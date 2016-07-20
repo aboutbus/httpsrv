@@ -115,14 +115,17 @@ int main(int argc, char **argv)
 
 	while(1) {		
 		int nd = accept(sd, NULL, 0);
-		assert(sd != -1);
+		assert(nd != -1);
 
 		int ret = fork();
+		assert(ret >= 0);
 		if (ret == 0) {
 			http_client(nd);
 			close(nd);			
 			return 0;
 		}
+
+		close(nd);
 	}
 
 	close(sd);
