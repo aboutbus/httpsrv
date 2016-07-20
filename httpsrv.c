@@ -3,9 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <arpa/inet.h>
 
 char *host = "127.0.0.1";
@@ -70,7 +73,17 @@ int main(int argc, char **argv)
 		}
 	}
 
-	daemon(1, 0);
+	daemon(1, 1);
+
+	int fd = open("./access.log", O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	assert(fd >= 0);
+
+	close(fileno(stdin));
+	close(fileno(stdout));
+	close(fileno(stderr));
+	dup(fd);
+	dup(fd);
+	dup(fd);
 
 	printf("host: %s port: %d directory: %s\n", host, port, directory);
 
