@@ -121,7 +121,8 @@ int main(int argc, char **argv)
 	dup(fd);
 
 	pthread_t id[THREADS_COUNT];
-	for (int i = 0; i < THREADS_COUNT; ++i) {
+	int i;
+	for (i = 0; i < THREADS_COUNT; ++i) {
 		pthread_create(&id[i], NULL, thread_fn, NULL);
 	}	
 
